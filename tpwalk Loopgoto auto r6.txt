@@ -1,0 +1,100 @@
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- إعدادات TPWalk
+local tpwalking = false
+local tpwalkSpeed = 3
+
+-- إعدادات LoopGoto
+local loopgoto = nil
+local playerToFollow = nil
+local followDistance = 3
+local followDelay = 0
+
+-- تفعيل R6 عند إعادة ظهور الشخصية (بدون استخدام game.Players:Chat)
+local function setR6(character)
+    task.wait(1) -- انتظر ثانية لضمان تحميل الشخصية
+    
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.RigType = Enum.HumanoidRigType.R6
+        print("تم تحويل الشخصية إلى R6 تلقائياً")
+    end
+end
+
+-- تفعيل عند تغيير الشخصية
+LocalPlayer.CharacterAdded:Connect(setR6)
+
+-- نظام TPWalk بالضغط على L
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.L and not gameProcessed then
+        tpwalking = not tpwalking
+        
+        if tpwalking then
+            print("تم تفعيل TPWalk (السرعة: "..tpwalkSpeed..")")
+            local chr = LocalPlayer.Character
+            local hum = chr and chr:FindFirstChildOfClass("Humanoid")
+            
+            while tpwalking and chr and hum and hum.Parent do
+                local delta = RunService.Heartbeat:Wait()
+                if hum.MoveDirection.Magnitude > 0 then
+                    chr:TranslateBy(hum.MoveDirection * tpwalkSpeed * delta * 10)
+                end
+                task.wait()
+            end
+        else
+            print("تم إيقاف TPWalk")
+        end
+    end
+end)
+
+-- نظام LoopGoto بالضغط على F والنقر على لاعب
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.K and not gameProcessed then
+        if playerToFollow then
+            loopgoto = not loopgoto and playerToFollow or nil
+            
+            if loopgoto then
+                print("بدأت متابعة اللاعب: "..playerToFollow.Name)
+                local chr = LocalPlayer.Character
+                
+                while loopgoto and playerToFollow and playerToFollow.Character do
+                    local targetRoot = playerToFollow.Character:FindFirstChild("HumanoidRootPart")
+                    local myRoot = chr and chr:FindFirstChild("HumanoidRootPart")
+                    
+                    if targetRoot and myRoot then
+                        myRoot.CFrame = targetRoot.CFrame + Vector3.new(followDistance, 0, 0)
+                    end
+                    task.wait(followDelay)
+                end
+            else
+                print("تم إيقاف المتابعة")
+            end
+        else
+            print("⚠️ لم يتم تحديد لاعب. انقر على لاعب أولاً ثم اضغط F")
+        end
+    end
+end)
+
+-- نظام تحديد اللاعب بالنقر عليه
+local mouse = LocalPlayer:GetMouse()
+mouse.Button1Down:Connect(function()
+    if mouse.Target then
+        local target = mouse.Target
+        if target.Parent then
+            local player = Players:GetPlayerFromCharacter(target.Parent)
+            if player then
+                playerToFollow = player
+                print("تم تحديد اللاعب: "..player.Name)
+            end
+        end
+    end
+end)
+
+print("تم تحميل السكربت بنجاح!")
+print("تعليمات الاستخدام:")
+print("- اضغط L لتفعيل/إيقاف TPWalk")
+print("- انقر على لاعب ثم اضغط F لمتابعته/إيقاف المتابعة")
+print("- يتم تحويل الشخصية تلقائياً إلى R6 عند الموت وإعادة الظهور")
