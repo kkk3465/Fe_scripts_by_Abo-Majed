@@ -1,1 +1,1 @@
-prin(banlist)
+prin("banlist")
